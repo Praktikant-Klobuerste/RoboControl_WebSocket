@@ -14,6 +14,7 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <PubSubClient.h>
 #include <Servo.h>
 #include "html.h"
 
@@ -21,12 +22,22 @@
 // Replace with your network credentials
 const char *ssid = "Super-Haching";
 const char *password = "27101966";
+const char *mqtt_server = "192.168.2.230";
+const char *mqtt_username = "Ravson";
+const char *mqtt_password = "Hunzapfen1";
 
-// Create AsyncWebServer object on port 80
+#define clientID_Name "Robo"
+#define USER_MQTT_CLIENT_NAME "Robo"
+
+char charPayload[50];
+const char *willTopic = USER_MQTT_CLIENT_NAME "/LWT";
+
+
 AsyncWebServer server(80);
-// Create a WebSocket object
-
 AsyncWebSocket ws("/ws");
+
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 Servo Servo1;
 Servo Servo2;
@@ -75,13 +86,13 @@ uint8_t angle_6 = sliderValue6.toInt();
 uint8_t angle_7 = sliderValue7.toInt();
 
 
-float prev_angle_1;
-float prev_angle_2;
-float prev_angle_3;
-float prev_angle_4;
-float prev_angle_5;
-float prev_angle_6;
-float prev_angle_7;
+float prev_angle_1 = float(angle_1);
+float prev_angle_2 = float(angle_2);
+float prev_angle_3 = float(angle_3);
+float prev_angle_4 = float(angle_4);
+float prev_angle_5 = float(angle_5);
+float prev_angle_6 = float(angle_6);
+float prev_angle_7 = float(angle_7);
 
 
 void initWifi();
@@ -90,6 +101,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 void initWebSocket();
 void smoothServo(int target_value, float *prev_value, Servo &theServo);
+void callback(char *topic, byte *payload, unsigned int length);
+void reconnect();
 
 
 void setup() {
@@ -110,6 +123,8 @@ void setup() {
     request->send(200, "text/html", index_html);
   });
 
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
 
   // Start server
   server.begin();
@@ -139,6 +154,11 @@ void loop() {
     Serial.println(round(prev_angle_1));
   }
 
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
   ws.cleanupClients();
 }
 
@@ -148,13 +168,19 @@ void loop() {
 void initWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print('.');
-    delay(1000);
+    delay(500);
   }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 }
+
 
 void notifyClients(String sliderValues) {
   ws.textAll(sliderValues);
@@ -242,5 +268,148 @@ void smoothServo(int target_value, float *prev_value, Servo &theServo) {
     smoothed_value = (target_value * 0.05) + (*prev_value * 0.95);
     theServo.write(round(smoothed_value));
     *prev_value = smoothed_value;
+  }
+}
+
+
+void reconnect() {
+  // Loop until we're reconnected
+  int retries = 0;
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    if (retries < 150) {
+      Serial.print("Attempting MQTT connection...");
+      // Create a random client ID
+      String clientId = "ESP8266Client-";
+      clientId += String(random(0xffff), HEX);
+      // Attempt to connect
+      if (client.connect(clientID_Name, mqtt_username, mqtt_password, willTopic, 2, true, "Offline")) {
+        Serial.println("connected");
+        // Once connected, publish an announcement...
+        client.publish(willTopic, "Online");
+        // ... and resubscribe
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Movement");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo1/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo2/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo3/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo4/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo5/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo6/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Servo7/Pos");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/IP");
+
+
+      } else {
+        Serial.print("failed, rc=");
+        Serial.print(client.state());
+        Serial.println(" try again in 5 seconds");
+        retries++;
+        // Wait 5 seconds before retrying
+        delay(5000);
+      }
+    }
+    if (retries > 1500) {
+      ESP.restart();
+    }
+  }
+}
+
+
+//++++++++++++++++++++++++++Callback++++++++++++++++++++++++++
+void callback(char *topic, byte *payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  String newTopic = topic;
+  Serial.print(topic);
+  Serial.print("] ");
+  payload[length] = '\0';
+
+  /* Converting String Variable into a Interger Variable
+      as a subscribtion 16bit Variable*/
+  String newPayload = String((char *)payload);
+  int intPayload = newPayload.toInt();
+  Serial.println(newPayload);
+  Serial.println();
+  newPayload.toCharArray(charPayload, newPayload.length() + 1);
+
+
+  //++++++++++++++++++  ++++Incoming Statements++++++++++++++++++++++
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Movement") {
+    if (newPayload == "ON") {
+      // Servo1.write(18);
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "ON");
+    }
+    if (newPayload == "OFF") {
+      // Servo1.write(106);
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "OFF");
+    }
+  }
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo1/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue1 = newPayload;
+    notifyClients(getSliderValues());
+    angle_1 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo2/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue2 = newPayload;
+    notifyClients(getSliderValues());
+    angle_2 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo3/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue3 = newPayload;
+    notifyClients(getSliderValues());
+    angle_3 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo4/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue4 = newPayload;
+    notifyClients(getSliderValues());
+    angle_4 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo5/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue5 = newPayload;
+    notifyClients(getSliderValues());
+    angle_5 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo6/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue6 = newPayload;
+    notifyClients(getSliderValues());
+    angle_6 = intPayload;
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Servo7/Pos") {
+    const char *cPos = charPayload;
+    client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
+    sliderValue7 = newPayload;
+    notifyClients(getSliderValues());
+    angle_7 = intPayload;
+  }
+
+
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/IP") {
+    client.publish(USER_MQTT_CLIENT_NAME "IP/status", WiFi.localIP().toString().c_str());  //https://github.com/knolleary/pubsubclient/issues/248
   }
 }
