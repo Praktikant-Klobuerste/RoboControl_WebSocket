@@ -84,6 +84,63 @@ float prev_angle_6;
 float prev_angle_7;
 
 
+void initWifi();
+void notifyClients(String sliderValues);
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+void initWebSocket();
+void smoothServo(int target_value, float *prev_value, Servo &theServo);
+
+
+void setup() {
+  Serial.begin(115200);
+  Servo1.attach(16, 500, 2400);  //GPIO16 = D0
+  Servo2.attach(14, 500, 2400);  //GPIO14 = D5
+  Servo3.attach(12, 500, 2400);  //GPIO12 = D6
+  Servo4.attach(5, 500, 2400);   //GPIO5 = D1
+  Servo5.attach(4, 500, 2400);   //GPIO4 = D2
+  Servo6.attach(0, 500, 2400);   //GPIO0 = D3
+  Servo7.attach(2, 500, 2400);   //GPIO2 = D4
+  initWiFi();
+
+  initWebSocket();
+
+  // Web Server Root URL
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", index_html);
+  });
+
+
+  // Start server
+  server.begin();
+}
+
+
+void loop() {
+
+  currentMillis = millis();
+
+  if (currentMillis - previousMillis > 5) {
+    previousMillis = currentMillis;
+    smoothServo(angle_1, &prev_angle_1, Servo1);
+    smoothServo(angle_2, &prev_angle_2, Servo2);
+    smoothServo(angle_3, &prev_angle_3, Servo3);
+    smoothServo(angle_4, &prev_angle_4, Servo4);
+    smoothServo(angle_5, &prev_angle_5, Servo5);
+    smoothServo(angle_6, &prev_angle_6, Servo6);
+    smoothServo(angle_7, &prev_angle_7, Servo7);
+  }
+
+  if (round(prev_angle_1) != angle_1) {
+    Serial.print(angle_1);
+    Serial.print("\t");
+    Serial.print(prev_angle_1);
+    Serial.print("\t");
+    Serial.println(round(prev_angle_1));
+  }
+
+  ws.cleanupClients();
+}
 
 
 
@@ -186,54 +243,4 @@ void smoothServo(int target_value, float *prev_value, Servo &theServo) {
     theServo.write(round(smoothed_value));
     *prev_value = smoothed_value;
   }
-}
-
-
-void setup() {
-  Serial.begin(115200);
-  Servo1.attach(16, 500, 2400);  //GPIO16 = D0
-  Servo2.attach(14, 500, 2400);  //GPIO14 = D5
-  Servo3.attach(12, 500, 2400);  //GPIO12 = D6
-  Servo4.attach(5, 500, 2400);   //GPIO5 = D1
-  Servo5.attach(4, 500, 2400);   //GPIO4 = D2
-  Servo6.attach(0, 500, 2400);   //GPIO0 = D3
-  Servo7.attach(2, 500, 2400);   //GPIO2 = D4
-  initWiFi();
-
-  initWebSocket();
-
-  // Web Server Root URL
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", index_html);
-  });
-
-
-  // Start server
-  server.begin();
-}
-
-void loop() {
-
-  currentMillis = millis();
-
-  if (currentMillis - previousMillis > 5) {
-    previousMillis = currentMillis;
-    smoothServo(angle_1, &prev_angle_1, Servo1);
-    smoothServo(angle_2, &prev_angle_2, Servo2);
-    smoothServo(angle_3, &prev_angle_3, Servo3);
-    smoothServo(angle_4, &prev_angle_4, Servo4);
-    smoothServo(angle_5, &prev_angle_5, Servo5);
-    smoothServo(angle_6, &prev_angle_6, Servo6);
-    smoothServo(angle_7, &prev_angle_7, Servo7);
-  }
-
-  if (round(prev_angle_1) != angle_1) {
-    Serial.print(angle_1);
-    Serial.print("\t");
-    Serial.print(prev_angle_1);
-    Serial.print("\t");
-    Serial.println(round(prev_angle_1));
-  }
-
-  ws.cleanupClients();
 }
