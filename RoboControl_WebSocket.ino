@@ -65,13 +65,26 @@ String getSliderValues() {
 
 unsigned long currentMillis;
 long previousMillis = 0;  // set up timers
-float prev_angle_1 = (float)sliderValue1.toInt();
-float prev_angle_2 = (float)sliderValue2.toInt();
-float prev_angle_3 = (float)sliderValue3.toInt();
-float prev_angle_4 = (float)sliderValue4.toInt();
-float prev_angle_5 = (float)sliderValue5.toInt();
-float prev_angle_6 = (float)sliderValue6.toInt();
-float prev_angle_7 = (float)sliderValue7.toInt();
+
+uint8_t angle_1 = sliderValue1.toInt();
+uint8_t angle_2 = sliderValue2.toInt();
+uint8_t angle_3 = sliderValue3.toInt();
+uint8_t angle_4 = sliderValue4.toInt();
+uint8_t angle_5 = sliderValue5.toInt();
+uint8_t angle_6 = sliderValue6.toInt();
+uint8_t angle_7 = sliderValue7.toInt();
+
+
+float prev_angle_1;
+float prev_angle_2;
+float prev_angle_3;
+float prev_angle_4;
+float prev_angle_5;
+float prev_angle_6;
+float prev_angle_7;
+
+
+
 
 
 // Initialize WiFi
@@ -97,43 +110,43 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     message = (char *)data;
     if (message.indexOf("1s") >= 0) {
       sliderValue1 = message.substring(2);
-      smoothValue(sliderValue1.toInt(), &prev_angle_1, Servo1);
+      angle_1 = sliderValue1.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("2s") >= 0) {
       sliderValue2 = message.substring(2);
-      smoothValue(sliderValue2.toInt(), &prev_angle_2, Servo2);
+      angle_2 = sliderValue2.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("3s") >= 0) {
       sliderValue3 = message.substring(2);
-      smoothValue(sliderValue3.toInt(), &prev_angle_3, Servo3);
+      angle_3 = sliderValue3.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("4s") >= 0) {
       sliderValue4 = message.substring(2);
-      smoothValue(sliderValue4.toInt(), &prev_angle_4, Servo4);
+      angle_4 = sliderValue4.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("5s") >= 0) {
       sliderValue5 = message.substring(2);
-      smoothValue(sliderValue5.toInt(), &prev_angle_5, Servo5);
+      angle_5 = sliderValue5.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("6s") >= 0) {
       sliderValue6 = message.substring(2);
-      smoothValue(sliderValue6.toInt(), &prev_angle_6, Servo6);
+      angle_6 = sliderValue6.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("7s") >= 0) {
       sliderValue7 = message.substring(2);
-      smoothValue(sliderValue7.toInt(), &prev_angle_7, Servo7);
+      angle_7 = sliderValue7.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
@@ -165,23 +178,16 @@ void initWebSocket() {
 }
 
 
-void smoothValue(int target_value, float *prev_value, Servo &theServo) {
-  unsigned int i = 0;
-  float smoothed_value = 0;
-  while (i < 500) {
-    currentMillis = millis();
-    if (currentMillis - previousMillis > 5) {
-      previousMillis = currentMillis;
-      smoothed_value = (target_value * 0.05) + (*prev_value * 0.95);
-      theServo.write(round(smoothed_value));
-      if (round(smoothed_value) == target_value) {
-        break;
-      }
-      Serial.println(smoothed_value);
-      *prev_value = smoothed_value;
-    }
+void smoothServo(int target_value, float *prev_value, Servo &theServo) {
+  if (round(*prev_value) != target_value) {
+    float smoothed_value = 0;
+
+    smoothed_value = (target_value * 0.05) + (*prev_value * 0.95);
+    theServo.write(round(smoothed_value));
+    *prev_value = smoothed_value;
   }
 }
+
 
 void setup() {
   Serial.begin(115200);
@@ -208,6 +214,26 @@ void setup() {
 
 void loop() {
 
+  currentMillis = millis();
+
+  if (currentMillis - previousMillis > 5) {
+    previousMillis = currentMillis;
+    smoothServo(angle_1, &prev_angle_1, Servo1);
+    smoothServo(angle_2, &prev_angle_2, Servo2);
+    smoothServo(angle_3, &prev_angle_3, Servo3);
+    smoothServo(angle_4, &prev_angle_4, Servo4);
+    smoothServo(angle_5, &prev_angle_5, Servo5);
+    smoothServo(angle_6, &prev_angle_6, Servo6);
+    smoothServo(angle_7, &prev_angle_7, Servo7);
+  }
+
+  if (round(prev_angle_1) != angle_1) {
+    Serial.print(angle_1);
+    Serial.print("\t");
+    Serial.print(prev_angle_1);
+    Serial.print("\t");
+    Serial.println(round(prev_angle_1));
+  }
 
   ws.cleanupClients();
 }
