@@ -48,12 +48,12 @@ Servo Servo6;
 Servo Servo7;
 
 String message = "";
-String sliderValue1 = "30";
-String sliderValue2 = "80";
-String sliderValue3 = "70";
+String sliderValue1 = "100";
+String sliderValue2 = "140";
+String sliderValue3 = "120";
 String sliderValue4 = "25";
-String sliderValue5 = "0";
-String sliderValue6 = "0";
+String sliderValue5 = "80";
+String sliderValue6 = "80";
 String sliderValue7 = "10";
 
 //Get Slider Values
@@ -76,6 +76,9 @@ String getSliderValues() {
 
 unsigned long currentMillis;
 long previousMillis = 0;  // set up timers
+int stepFlag = 0;
+long previousStepMillis = 0;
+bool startAnimation = false;
 
 uint8_t angle_1 = sliderValue1.toInt();
 uint8_t angle_2 = sliderValue2.toInt();
@@ -100,7 +103,9 @@ void notifyClients(String sliderValues);
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 void initWebSocket();
-void smoothServo(int target_value, float *prev_value, Servo &theServo);
+void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1, float k2);
+void initServo();
+void eyeAnimation();
 void callback(char *topic, byte *payload, unsigned int length);
 void reconnect();
 
@@ -114,6 +119,7 @@ void setup() {
   Servo5.attach(4, 500, 2400);   //GPIO4 = D2
   Servo6.attach(0, 500, 2400);   //GPIO0 = D3
   Servo7.attach(2, 500, 2400);   //GPIO2 = D4
+  initServo();
   initWiFi();
 
   initWebSocket();
@@ -137,13 +143,15 @@ void loop() {
 
   if (currentMillis - previousMillis > 5) {
     previousMillis = currentMillis;
-    smoothServo(angle_1, &prev_angle_1, Servo1);
-    smoothServo(angle_2, &prev_angle_2, Servo2);
-    smoothServo(angle_3, &prev_angle_3, Servo3);
-    smoothServo(angle_4, &prev_angle_4, Servo4);
-    smoothServo(angle_5, &prev_angle_5, Servo5);
-    smoothServo(angle_6, &prev_angle_6, Servo6);
-    smoothServo(angle_7, &prev_angle_7, Servo7);
+    smoothServo(angle_1, &prev_angle_1, Servo1, 0.10, 0.90);
+    smoothServo(angle_2, &prev_angle_2, Servo2, 0.15, 0.85);
+    smoothServo(angle_3, &prev_angle_3, Servo3, 0.10, 0.90);
+    smoothServo(angle_4, &prev_angle_4, Servo4, 0.15, 0.85);
+    smoothServo(angle_5, &prev_angle_5, Servo5, 0.05, 0.95);
+    smoothServo(angle_6, &prev_angle_6, Servo6, 0.05, 0.95);
+    smoothServo(angle_7, &prev_angle_7, Servo7, 0.05, 0.95);
+
+    eyeAnimation();
   }
 
   if (round(prev_angle_1) != angle_1) {
@@ -261,15 +269,69 @@ void initWebSocket() {
 }
 
 
-void smoothServo(int target_value, float *prev_value, Servo &theServo) {
+void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1, float k2) {
   if (round(*prev_value) != target_value) {
     float smoothed_value = 0;
 
-    smoothed_value = (target_value * 0.05) + (*prev_value * 0.95);
+    smoothed_value = (target_value * k1) + (*prev_value * k2);
     theServo.write(round(smoothed_value));
     *prev_value = smoothed_value;
   }
 }
+
+void initServo() {
+  Servo1.write(angle_1);
+  Servo2.write(angle_2);
+  Servo3.write(angle_3);
+  Servo4.write(angle_4);
+  Servo5.write(angle_5);
+  Servo6.write(angle_6);
+  Servo7.write(angle_7);
+}
+
+void eyeAnimation() {
+  if (startAnimation) {
+    switch (stepFlag) {
+      case 0:
+        if (currentMillis - previousStepMillis > 500) {
+          angle_1 = 30;
+          angle_2 = 140;
+          angle_3 = 70;
+          angle_4 = 25;
+          stepFlag = 1;
+          previousStepMillis = currentMillis;
+        }
+        break;
+      case 1:
+        if (currentMillis - previousStepMillis > 100) {
+          angle_2 = 80;
+          angle_4 = 75;
+          stepFlag = 2;
+          previousStepMillis = currentMillis;
+        }
+        break;
+      case 2:
+        if (currentMillis - previousStepMillis > 400) {
+          angle_2 = 140;
+          angle_4 = 25;
+          stepFlag = 3;
+          previousStepMillis = currentMillis;
+        }
+        break;
+      case 3:
+        if (currentMillis - previousStepMillis > 500) {
+          angle_1 = 130;
+          angle_3 = 170;
+          stepFlag = 0;
+          previousStepMillis = currentMillis;
+          startAnimation = false;
+        }
+        break;
+    }
+  }
+}
+
+
 
 
 void reconnect() {
@@ -297,6 +359,7 @@ void reconnect() {
         client.subscribe(USER_MQTT_CLIENT_NAME "/Servo6/Pos");
         client.subscribe(USER_MQTT_CLIENT_NAME "/Servo7/Pos");
         client.subscribe(USER_MQTT_CLIENT_NAME "/IP");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Reset");
 
 
       } else {
@@ -334,9 +397,9 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
   //++++++++++++++++++  ++++Incoming Statements++++++++++++++++++++++
   if (newTopic == USER_MQTT_CLIENT_NAME "/Movement") {
-    if (newPayload == "ON") {
-      // Servo1.write(18);
-      client.publish(USER_MQTT_CLIENT_NAME "/status", "ON");
+    if (newPayload == "Start") {
+      startAnimation = true;
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "Starting Animation");
     }
     if (newPayload == "OFF") {
       // Servo1.write(106);
@@ -407,9 +470,13 @@ void callback(char *topic, byte *payload, unsigned int length) {
   }
 
 
-
-
   if (newTopic == USER_MQTT_CLIENT_NAME "/IP") {
-    client.publish(USER_MQTT_CLIENT_NAME "IP/status", WiFi.localIP().toString().c_str());  //https://github.com/knolleary/pubsubclient/issues/248
+    client.publish(USER_MQTT_CLIENT_NAME "/IP/status", WiFi.localIP().toString().c_str());  //https://github.com/knolleary/pubsubclient/issues/248
+  }
+
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Reset") {
+    client.publish(USER_MQTT_CLIENT_NAME "status", "Restarting..");
+    ESP.restart();
   }
 }
