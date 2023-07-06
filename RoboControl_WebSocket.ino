@@ -14,6 +14,8 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoOTA.h>
+#include <AsyncElegantOTA.h>
 #include <PubSubClient.h>
 #include <Servo.h>
 #include "html.h"
@@ -79,6 +81,7 @@ long previousMillis = 0;  // set up timers
 int stepFlag = 0;
 long previousStepMillis = 0;
 bool startAnimation = false;
+bool servosArmed = true;
 
 uint8_t angle_1 = sliderValue1.toInt();
 uint8_t angle_2 = sliderValue2.toInt();
@@ -112,13 +115,6 @@ void reconnect();
 
 void setup() {
   Serial.begin(115200);
-  Servo1.attach(16, 500, 2400);  //GPIO16 = D0
-  Servo2.attach(14, 500, 2400);  //GPIO14 = D5
-  Servo3.attach(12, 500, 2400);  //GPIO12 = D6
-  Servo4.attach(5, 500, 2400);   //GPIO5 = D1
-  Servo5.attach(4, 500, 2400);   //GPIO4 = D2
-  Servo6.attach(0, 500, 2400);   //GPIO0 = D3
-  Servo7.attach(2, 500, 2400);   //GPIO2 = D4
   initServo();
   initWiFi();
 
@@ -131,6 +127,12 @@ void setup() {
 
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+
+
+  ArduinoOTA.setHostname("Robo_Control");
+  ArduinoOTA.begin();
+
+  AsyncElegantOTA.begin(&server);  // Start AsyncElegantOTA
 
   // Start server
   server.begin();
@@ -166,6 +168,7 @@ void loop() {
     reconnect();
   }
   client.loop();
+  ArduinoOTA.handle();
 
   ws.cleanupClients();
 }
@@ -199,6 +202,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     data[len] = 0;
     message = (char *)data;
+    Serial.println(message);
     if (message.indexOf("1s") >= 0) {
       sliderValue1 = message.substring(2);
       angle_1 = sliderValue1.toInt();
@@ -243,6 +247,51 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     if (strcmp((char *)data, "getValues") == 0) {
       notifyClients(getSliderValues());
+      notifyClients(servosArmed ? "armed&true" : "armed&false");
+    }
+
+    if (strcmp((char *)data, "reset") == 0) {
+      Serial.println("Restarting ESP");
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
+      ESP.restart();
+    }
+
+    if (message.indexOf("armed&") >= 0) {
+      if (message.substring(6) == "true") {
+        servosArmed = true;
+        notifyClients(servosArmed ? "armed&true" : "armed&true");
+        client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
+        initServo();
+      } else {
+        servosArmed = false;
+        notifyClients(servosArmed ? "armed&true" : "armed&false");
+        client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
+        Servo1.detach();  //GPIO16 = D0
+        Servo2.detach();  //GPIO14 = D5
+        Servo3.detach();  //GPIO12 = D6
+        Servo4.detach();  //GPIO5 = D1
+        Servo5.detach();  //GPIO4 = D2
+        Servo6.detach();  //GPIO0 = D3
+        Servo7.detach();  //GPIO2 = D4
+      }
+    }
+
+    // if (strcmp((char *)data, "Disarm") == 0) {
+    //   servosArmed = false;
+    //   notifyClients(servosArmed ? "armed&true" : "armed&false");
+    //   client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
+    //   Servo1.detach();  //GPIO16 = D0
+    //   Servo2.detach();  //GPIO14 = D5
+    //   Servo3.detach();  //GPIO12 = D6
+    //   Servo4.detach();  //GPIO5 = D1
+    //   Servo5.detach();  //GPIO4 = D2
+    //   Servo6.detach();  //GPIO0 = D3
+    //   Servo7.detach();  //GPIO2 = D4
+    // }
+
+    if (strcmp((char *)data, "animation") == 0) {
+      startAnimation = true;
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "Starting Animation");
     }
   }
 }
@@ -280,6 +329,13 @@ void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1,
 }
 
 void initServo() {
+  Servo1.attach(16, 500, 2400);  //GPIO16 = D0
+  Servo2.attach(14, 500, 2400);  //GPIO14 = D5
+  Servo3.attach(12, 500, 2400);  //GPIO12 = D6
+  Servo4.attach(5, 500, 2400);   //GPIO5 = D1
+  Servo5.attach(4, 500, 2400);   //GPIO4 = D2
+  Servo6.attach(0, 500, 2400);   //GPIO0 = D3
+  Servo7.attach(2, 500, 2400);   //GPIO2 = D4
   Servo1.write(angle_1);
   Servo2.write(angle_2);
   Servo3.write(angle_3);
@@ -294,34 +350,34 @@ void eyeAnimation() {
     switch (stepFlag) {
       case 0:
         if (currentMillis - previousStepMillis > 500) {
-          angle_1 = 30;
-          angle_2 = 140;
-          angle_3 = 70;
-          angle_4 = 25;
+          angle_1 = 60;
+          angle_2 = 105;
+          angle_3 = 50;
+          angle_4 = 120;
           stepFlag = 1;
           previousStepMillis = currentMillis;
         }
         break;
       case 1:
         if (currentMillis - previousStepMillis > 100) {
-          angle_2 = 80;
-          angle_4 = 75;
+          angle_2 = 60;
+          angle_4 = 170;
           stepFlag = 2;
           previousStepMillis = currentMillis;
         }
         break;
       case 2:
         if (currentMillis - previousStepMillis > 400) {
-          angle_2 = 140;
-          angle_4 = 25;
+          angle_2 = 105;
+          angle_4 = 120;
           stepFlag = 3;
           previousStepMillis = currentMillis;
         }
         break;
       case 3:
         if (currentMillis - previousStepMillis > 500) {
-          angle_1 = 130;
-          angle_3 = 170;
+          angle_1 = 150;
+          angle_3 = 140;
           stepFlag = 0;
           previousStepMillis = currentMillis;
           startAnimation = false;
@@ -360,6 +416,8 @@ void reconnect() {
         client.subscribe(USER_MQTT_CLIENT_NAME "/Servo7/Pos");
         client.subscribe(USER_MQTT_CLIENT_NAME "/IP");
         client.subscribe(USER_MQTT_CLIENT_NAME "/Reset");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Disarm");
+        client.subscribe(USER_MQTT_CLIENT_NAME "/Arm");
 
 
       } else {
@@ -476,7 +534,28 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
 
   if (newTopic == USER_MQTT_CLIENT_NAME "/Reset") {
-    client.publish(USER_MQTT_CLIENT_NAME "status", "Restarting..");
+    client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
     ESP.restart();
+  }
+
+  if (newTopic == USER_MQTT_CLIENT_NAME "/Arm") {
+    if (newPayload == "true"){
+    servosArmed = true;
+    notifyClients(servosArmed ? "armed&true" : "armed&false");
+    client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
+    initServo();
+    }
+    else if (newPayload == "false"){
+          servosArmed = false;
+    notifyClients(servosArmed ? "armed&true" : "armed&false");
+    client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
+    Servo1.detach();  //GPIO16 = D0
+    Servo2.detach();  //GPIO14 = D5
+    Servo3.detach();  //GPIO12 = D6
+    Servo4.detach();  //GPIO5 = D1
+    Servo5.detach();  //GPIO4 = D2
+    Servo6.detach();  //GPIO0 = D3
+    Servo7.detach();  //GPIO2 = D4
+    }
   }
 }
