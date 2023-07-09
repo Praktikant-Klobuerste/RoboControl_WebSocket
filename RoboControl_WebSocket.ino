@@ -10,6 +10,7 @@
 */
 
 #include <ArduinoJson.h>
+#include "filesystem.h"
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -19,6 +20,8 @@
 #include <PubSubClient.h>
 #include <Servo.h>
 #include "html.h"
+#include "css.h"
+#include "script.h"
 
 
 // Replace with your network credentials
@@ -58,23 +61,6 @@ String sliderValue5 = "80";
 String sliderValue6 = "80";
 String sliderValue7 = "10";
 
-//Get Slider Values
-String getSliderValues() {
-
-  StaticJsonDocument<1000> sliderValues;
-  sliderValues["sliderValue1"] = String(sliderValue1);
-  sliderValues["sliderValue2"] = String(sliderValue2);
-  sliderValues["sliderValue3"] = String(sliderValue3);
-  sliderValues["sliderValue4"] = String(sliderValue4);
-  sliderValues["sliderValue5"] = String(sliderValue5);
-  sliderValues["sliderValue6"] = String(sliderValue6);
-  sliderValues["sliderValue7"] = String(sliderValue7);
-
-  char Nachricht[1000];
-  serializeJson(sliderValues, Nachricht, sizeof(Nachricht));
-
-  return Nachricht;
-}
 
 unsigned long currentMillis;
 long previousMillis = 0;  // set up timers
@@ -100,21 +86,24 @@ float prev_angle_5 = float(angle_5);
 float prev_angle_6 = float(angle_6);
 float prev_angle_7 = float(angle_7);
 
-
-void initWifi();
+String getSliderValues();
+void initWiFi();
 void notifyClients(String sliderValues);
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 void initWebSocket();
 void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1, float k2);
-void initServo();
+void initServos();
 void eyeAnimation();
 void callback(char *topic, byte *payload, unsigned int length);
 void reconnect();
+void restartESP();
+void detachServos();
 
 
 void setup() {
   Serial.begin(115200);
+  LittleFS.begin();
   initServo();
   initWiFi();
 
@@ -123,6 +112,14 @@ void setup() {
   // Web Server Root URL
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", index_html);
+  });
+  
+  server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/css", styles_css);
+  });
+
+  server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/javascript", script_js);
   });
 
   client.setServer(mqtt_server, 1883);
@@ -171,6 +168,24 @@ void loop() {
   ArduinoOTA.handle();
 
   ws.cleanupClients();
+}
+
+//Get Slider Values
+String getSliderValues() {
+
+  StaticJsonDocument<1000> sliderValues;
+  sliderValues["sliderValue1"] = String(sliderValue1);
+  sliderValues["sliderValue2"] = String(sliderValue2);
+  sliderValues["sliderValue3"] = String(sliderValue3);
+  sliderValues["sliderValue4"] = String(sliderValue4);
+  sliderValues["sliderValue5"] = String(sliderValue5);
+  sliderValues["sliderValue6"] = String(sliderValue6);
+  sliderValues["sliderValue7"] = String(sliderValue7);
+
+  char Nachricht[1000];
+  serializeJson(sliderValues, Nachricht, sizeof(Nachricht));
+
+  return Nachricht;
 }
 
 
@@ -251,9 +266,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
 
     if (strcmp((char *)data, "reset") == 0) {
-      Serial.println("Restarting ESP");
-      client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
-      ESP.restart();
+      restartESP();
     }
 
     if (message.indexOf("armed&") >= 0) {
@@ -534,8 +547,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
 
   if (newTopic == USER_MQTT_CLIENT_NAME "/Reset") {
-    client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
-    ESP.restart();
+    restartESP();
   }
 
   if (newTopic == USER_MQTT_CLIENT_NAME "/Arm") {
@@ -558,4 +570,10 @@ void callback(char *topic, byte *payload, unsigned int length) {
     Servo7.detach();  //GPIO2 = D4
     }
   }
+}
+
+void restartESP() {
+  Serial.println("Restarting ESP");
+  client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
+  ESP.restart();
 }

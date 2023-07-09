@@ -6,119 +6,23 @@ const char index_html[] PROGMEM = R"rawliteral(
    <title>Robo - Control</title>
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
       integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous" />
+      <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1" />
    <!-- <link rel="icon" type="image/png" href="favicon.png"> -->
-   <style>
-      html {
-         font-family: Arial, Helvetica, sans-serif;
-         display: inline-block;
-         text-align: center;
-      }
-
-      p {
-         font-size: 1.4rem;
-      }
-
-      body {
-         margin: 0;
-      }
-
-      .content {
-         padding: 30px;
-      }
-
-      .title {
-         font-size: 1.8rem;
-         color: white;
-      }
-
-      .card-grid {
-         max-width: 700px;
-         margin: 0 auto;
-         display: grid;
-         grid-gap: 2rem;
-         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      }
-
-      .card-element {
-         background-color: white;
-         box-shadow: 2px 2px 12px 1px rgba(140, 140, 140, 0.5);
-      }
-
-      .card-title {
-         font-size: 1.2rem;
-         font-weight: bold;
-         color: #034078;
-         padding: 20px 5px 5px;
-      }
-
-      .state {
-         font-size: 1.2rem;
-         color: #1282a2;
-      }
-
-      .slider {
-         -webkit-appearance: none;
-         margin: 0 auto;
-         width: 100%;
-         height: 10px;
-         background: #ffd65c;
-         outline: none;
-         -webkit-transition: 0.2s;
-         transition: opacity 0.2s;
-      }
-
-      .slider::-webkit-slider-thumb {
-         -webkit-appearance: none;
-         appearance: none;
-         width: 25px;
-         height: 25px;
-         border-radius: 10%;
-         background: #003249;
-         cursor: pointer;
-      }
-
-      .slider::-moz-range-thumb {
-         width: 25px;
-         height: 25px;
-         background: #003249;
-         cursor: pointer;
-      }
-
-      .switch {
-         padding-left: 5%;
-         padding-right: 5%;
-      }
-
-      .navbar-nav {
-         display: inline;
-      }
-
-      .nav-item {
-         display: inline;
-      }
-
-      .btn-delete {
-         --bs-btn-font-weight: 600;
-         --bs-btn-color: rgb(248, 183, 245);
-         --bs-btn-bg: purple;
-         --bs-btn-border-color: rgb(88, 0, 88);
-         --bs-btn-border-radius: 0.5rem;
-         --bs-btn-hover-color: white;
-         --bs-btn-hover-bg: rgb(226, 4, 4);
-         /* --bs-btn-hover-bg: rgb(70, 1, 70); */
-      }
-
-      .model-paragraph {
-         font-size: 1rem;
-      }
-   </style>
+   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
    <nav class="navbar bg-dark border-bottom border-bottom-dark" data-bs-theme="dark">
       <h1 class="title mx-3 my-2">Robo - Control</h1>
       <ul class="navbar-nav mx-4 topnav">
+         <!-- Settings Modal button -->
+         <li class="nav-item">
+            <button id="btnSettings" class="btn btn-outline-light" data-bs-toggle="modal"
+               data-bs-target="#modalSettings">
+               Settings
+            </button>
+         </li>
          <li class="nav-item">
             <button id="btnPower" class="btn btn-warning" onclick="togglePower(this)">
                Power
@@ -158,8 +62,8 @@ const char index_html[] PROGMEM = R"rawliteral(
    </div>
 
 
-   <!-- Modal Bestellungen löschen-->
-   <div class="modal fade" id="modalReset" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+   <!-- Modal Reset Robot-->
+   <section class="modal fade" id="modalReset" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
       aria-labelledby="modalResetLabel" aria-hidden="true">
       <div class="modal-dialog">
          <div class="modal-content">
@@ -171,7 +75,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
             <div class="modal-body" id="modalResetBody">
                <p class="model-paragraph">You are about to restart the Robo!</p>
-               <p class="model-paragraph">Axis will go to initial posistion.</p>
+               <p class="model-paragraph">Axis will go to initial position.</p>
             </div>
             <div class="modal-footer">
                <button class="btn btn-delete" type="button" data-bs-toggle="tooltip" data-bs-placement="bottom"
@@ -184,9 +88,73 @@ const char index_html[] PROGMEM = R"rawliteral(
             </div>
          </div>
       </div>
-   </div>
+   </section>
 
-   <div class="content">
+   <!-- Modal Settings -->
+   <section class="modal fade" id="modalSettings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+      aria-labelledby="modalSettingsLabel" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+         <div class="modal-content text-bg-dark">
+            <div class="modal-header">
+               <h1 class="modal-title fs-5 text-bg-dark" id="modalSettingsLabel">
+                  Settings
+               </h1>
+               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalSettingsBody">
+               <!-- Form -->
+               <form name="servoParameter" class="mx-5">
+                  <div class="servo-input-container">
+                     <label for="inputServo1K1" class="form-label">Servo 1</label>
+
+                     <input type="number" class="form-control" id="inputServo1K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo1K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo2K1" class="form-label">Servo 2</label>
+
+                     <input type="number" class="form-control" id="inputServo2K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo2K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo3K1" class="form-label">Servo 3</label>
+
+                     <input type="number" class="form-control" id="inputServo3K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo3K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo4K1" class="form-label">Servo 4</label>
+
+                     <input type="number" class="form-control" id="inputServo4K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo4K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo5K1" class="form-label">Servo 5</label>
+
+                     <input type="number" class="form-control" id="inputServo5K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo5K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo6K1" class="form-label">Servo 6</label>
+
+                     <input type="number" class="form-control" id="inputServo6K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo6K2" value="0.90">
+                  </div>
+                  <div class="servo-input-container">
+                     <label for="inputServo7K1" class="form-label">Servo 7</label>
+
+                     <input type="number" class="form-control" id="inputServo7K1" value="0.10">
+                     <input type="number" class="form-control" id="inputServo7K2" value="0.90">
+                  </div>
+
+               </form>
+               <button type="submit" class="btn btn-primary" onclick="validateForm()">Submit</button>
+            </div>
+         </div>
+      </div>
+   </section>
+
+   <section class="content">
       <div class="card-grid">
          <div class="card-element">
             <p class="card-title">Servo 1</p>
@@ -245,129 +213,9 @@ const char index_html[] PROGMEM = R"rawliteral(
             <p class="state">Angle: <span id="sliderValue7"></span></p>
          </div>
       </div>
-   </div>
+   </section>
 
-   <script>
-      var gateway = `ws://${window.location.hostname}/ws`;
-      var websocket;
-      var isOn = true;
-      window.addEventListener("load", onload);
-
-      setTimeout(()=>{function_body}, time in milliseconds);
-
-      function onload(event) {
-         initWebSocket();
-      }
-
-      function getValues() {
-         websocket.send("getValues");
-      }
-
-      function isJson(str) {
-         try {
-            JSON.parse(str);
-         } catch (e) {
-            return false;
-         }
-         return true;
-      }
-
-      function initWebSocket() {
-         console.log("Trying to open a WebSocket connection…");
-         websocket = new WebSocket(gateway);
-         websocket.onopen = onOpen;
-         websocket.onclose = onClose;
-         websocket.onmessage = onMessage;
-      }
-
-      function handleMessage(data) {
-         var message = data.split("&");
-         var topic = message[0];
-         var payload = message[1];
-         console.log(topic, payload);
-
-         // Power Button
-         if (topic == "armed") {
-            if (payload == "true") {
-               isOn = true;
-               document
-                  .getElementById("btnPower")
-                  .classList.replace("btn-outline-light", "btn-warning");
-            } else {
-               isOn = false;
-               document
-                  .getElementById("btnPower")
-                  .classList.replace("btn-warning", "btn-outline-light");
-            }
-         }
-      }
-
-      function onOpen(event) {
-         console.log("Connection opened");
-         getValues();
-      }
-
-      function onClose(event) {
-         console.log("Connection closed");
-         setTimeout(initWebSocket, 2000);
-      }
-
-      function updateSliderPWM(element) {
-         var sliderNumber = element.id.charAt(element.id.length - 1);
-         var sliderValue = document.getElementById(element.id).value;
-         document.getElementById("sliderValue" + sliderNumber).innerHTML =
-            sliderValue;
-         console.log(sliderValue);
-         websocket.send(sliderNumber + "s" + sliderValue.toString());
-      }
-
-      function onMessage(event) {
-         console.log(event.data);
-
-         if (isJson(event.data)) {
-            var myObj = JSON.parse(event.data);
-            var keys = Object.keys(myObj);
-
-            for (var i = 0; i < keys.length; i++) {
-               var key = keys[i];
-               document.getElementById(key).innerHTML = myObj[key];
-               document.getElementById("slider" + (i + 1).toString()).value =
-                  myObj[key];
-            }
-         } 
-         else 
-         {
-            handleMessage(event.data)
-         }
-      }
-
-
-      function startReset(element) {
-         document.getElementById("modalResetBody").textContent = "Board is restarting, refresh page. This will take some time!";
-         console.log(element.id);
-         websocket.send("reset");
-         setTimeout(()=> {
-            location.reload();
-      }
-      ,10000);
-         
-      }
-
-      function togglePower(element) {
-         console.log(element.id);
-         console.log(isOn);
-         if (isOn) {
-            websocket.send("armed&false");
-         } else {
-            websocket.send("armed&true");
-         }
-      }
-
-      function startAnimation(element) {
-         console.log(element.id);
-         websocket.send("animation");
-      }
-   </script>
+   <script src="script.js"></script>
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
       integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
       crossorigin="anonymous"></script>
@@ -382,5 +230,4 @@ const char index_html[] PROGMEM = R"rawliteral(
 </body>
 
 </html>
-
   )rawliteral";
