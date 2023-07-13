@@ -1,9 +1,8 @@
 #include <ArduinoJson.h>
 #include "LittleFS.h"
 
-#define JSON_CONFIG_FILE "/test_example.json"
 
-StaticJsonDocument<192> config;
+StaticJsonDocument<512> config;
 
 
 void writeFile(fs::FS &fs, const char *path, const char *message, const char *mode) {

@@ -1,14 +1,3 @@
-/* 
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp8266-nodemcu-web-server-websocket-sliders/
-  
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files.
-  
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-*/
-
 #include <ArduinoJson.h>
 #include "filesystem.h"
 #include <Arduino.h>
@@ -20,6 +9,7 @@
 #include <PubSubClient.h>
 #include <Servo.h>
 #include "html.h"
+#include "settings_html.h"
 #include "css.h"
 #include "script.h"
 
@@ -33,6 +23,8 @@ const char *mqtt_password = "Hunzapfen1";
 
 #define clientID_Name "Robo"
 #define USER_MQTT_CLIENT_NAME "Robo"
+#define SERVO_CONFIG_FILE "/servo_settings.json"
+
 
 char charPayload[50];
 const char *willTopic = USER_MQTT_CLIENT_NAME "/LWT";
@@ -44,20 +36,23 @@ AsyncWebSocket ws("/ws");
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-Servo Servo1;
-Servo Servo2;
-Servo Servo3;
-Servo Servo4;
-Servo Servo5;
-Servo Servo6;
-Servo Servo7;
+
+const uint8_t numServos = 7;
+Servo servos[numServos];
+const int servoPins[numServos] = { 16, 14, 12, 5, 4, 0, 2 };  //{D0, D5, D6, D1, D2, D3, D4}
+uint8_t servoAngles[numServos] = { 120, 105, 80, 120, 90, 80, 10 };
+float prevAngles[numServos] = { 120.0, 105.0, 80.0, 120.0, 90.0, 10.0 };
+
+
+float Servo_K1[numServos] = { 0.10, 0.15, 0.15, 0.15, 0.05, 0.05, 0.05 };
+float Servo_K2[numServos] = { 0.90, 0.85, 0.85, 0.85, 0.95, 0.95, 0.95 };
 
 String message = "";
-String sliderValue1 = "100";
-String sliderValue2 = "140";
-String sliderValue3 = "120";
-String sliderValue4 = "25";
-String sliderValue5 = "80";
+String sliderValue1 = "120";
+String sliderValue2 = "105";
+String sliderValue3 = "80";
+String sliderValue4 = "120";
+String sliderValue5 = "90";
 String sliderValue6 = "80";
 String sliderValue7 = "10";
 
@@ -69,22 +64,7 @@ long previousStepMillis = 0;
 bool startAnimation = false;
 bool servosArmed = true;
 
-uint8_t angle_1 = sliderValue1.toInt();
-uint8_t angle_2 = sliderValue2.toInt();
-uint8_t angle_3 = sliderValue3.toInt();
-uint8_t angle_4 = sliderValue4.toInt();
-uint8_t angle_5 = sliderValue5.toInt();
-uint8_t angle_6 = sliderValue6.toInt();
-uint8_t angle_7 = sliderValue7.toInt();
 
-
-float prev_angle_1 = float(angle_1);
-float prev_angle_2 = float(angle_2);
-float prev_angle_3 = float(angle_3);
-float prev_angle_4 = float(angle_4);
-float prev_angle_5 = float(angle_5);
-float prev_angle_6 = float(angle_6);
-float prev_angle_7 = float(angle_7);
 
 String getSliderValues();
 void initWiFi();
@@ -99,12 +79,14 @@ void callback(char *topic, byte *payload, unsigned int length);
 void reconnect();
 void restartESP();
 void detachServos();
+void loadServoParam();
 
 
 void setup() {
   Serial.begin(115200);
   LittleFS.begin();
-  initServo();
+  loadServoParam();
+  initServos();
   initWiFi();
 
   initWebSocket();
@@ -113,7 +95,11 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", index_html);
   });
-  
+
+  server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", settings_html);
+  });
+
   server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/css", styles_css);
   });
@@ -121,6 +107,22 @@ void setup() {
   server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/javascript", script_js);
   });
+
+  server.on("/json", HTTP_GET, [](AsyncWebServerRequest *request) {
+    const char *PARAM_INPUT = "value";
+    String inputMessage;
+    if (request->hasParam(PARAM_INPUT)) {
+      inputMessage = request->getParam(PARAM_INPUT)->value();
+      writeFile(LittleFS, SERVO_CONFIG_FILE, inputMessage.c_str(), "w");
+      loadServoParam();
+    } else {
+      inputMessage = "No message sent";
+    }
+    Serial.print("Message Param: ");
+    Serial.println(inputMessage);
+    request->send(LittleFS, SERVO_CONFIG_FILE, "text/plain");
+  });
+
 
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
@@ -142,23 +144,20 @@ void loop() {
 
   if (currentMillis - previousMillis > 5) {
     previousMillis = currentMillis;
-    smoothServo(angle_1, &prev_angle_1, Servo1, 0.10, 0.90);
-    smoothServo(angle_2, &prev_angle_2, Servo2, 0.15, 0.85);
-    smoothServo(angle_3, &prev_angle_3, Servo3, 0.10, 0.90);
-    smoothServo(angle_4, &prev_angle_4, Servo4, 0.15, 0.85);
-    smoothServo(angle_5, &prev_angle_5, Servo5, 0.05, 0.95);
-    smoothServo(angle_6, &prev_angle_6, Servo6, 0.05, 0.95);
-    smoothServo(angle_7, &prev_angle_7, Servo7, 0.05, 0.95);
+
+    for (int i = 0; i < numServos; i++) {
+      smoothServo(servoAngles[i], &prevAngles[i], servos[i], Servo_K1[i], Servo_K2[i]);
+    }
 
     eyeAnimation();
   }
 
-  if (round(prev_angle_1) != angle_1) {
-    Serial.print(angle_1);
+  if (round(prevAngles[0]) != servoAngles[0]) {
+    Serial.print(servoAngles[0]);
     Serial.print("\t");
-    Serial.print(prev_angle_1);
+    Serial.print(prevAngles[0]);
     Serial.print("\t");
-    Serial.println(round(prev_angle_1));
+    Serial.println(round(prevAngles[0]));
   }
 
   if (!client.connected()) {
@@ -173,7 +172,8 @@ void loop() {
 //Get Slider Values
 String getSliderValues() {
 
-  StaticJsonDocument<1000> sliderValues;
+  StaticJsonDocument<512> doc;
+  JsonObject sliderValues = doc.createNestedObject("sliderValues");
   sliderValues["sliderValue1"] = String(sliderValue1);
   sliderValues["sliderValue2"] = String(sliderValue2);
   sliderValues["sliderValue3"] = String(sliderValue3);
@@ -182,9 +182,8 @@ String getSliderValues() {
   sliderValues["sliderValue6"] = String(sliderValue6);
   sliderValues["sliderValue7"] = String(sliderValue7);
 
-  char Nachricht[1000];
-  serializeJson(sliderValues, Nachricht, sizeof(Nachricht));
-
+  char Nachricht[512];
+  serializeJson(doc, Nachricht, sizeof(Nachricht));
   return Nachricht;
 }
 
@@ -208,8 +207,8 @@ void initWiFi() {
 }
 
 
-void notifyClients(String sliderValues) {
-  ws.textAll(sliderValues);
+void notifyClients(String values) {
+  ws.textAll(values);
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -220,48 +219,49 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     Serial.println(message);
     if (message.indexOf("1s") >= 0) {
       sliderValue1 = message.substring(2);
-      angle_1 = sliderValue1.toInt();
+      servoAngles[0] = sliderValue1.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("2s") >= 0) {
       sliderValue2 = message.substring(2);
-      angle_2 = sliderValue2.toInt();
+      servoAngles[1] = sliderValue2.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("3s") >= 0) {
       sliderValue3 = message.substring(2);
-      angle_3 = sliderValue3.toInt();
+      servoAngles[2] = sliderValue3.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("4s") >= 0) {
       sliderValue4 = message.substring(2);
-      angle_4 = sliderValue4.toInt();
+      servoAngles[3] = sliderValue4.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("5s") >= 0) {
       sliderValue5 = message.substring(2);
-      angle_5 = sliderValue5.toInt();
+      servoAngles[4] = sliderValue5.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("6s") >= 0) {
       sliderValue6 = message.substring(2);
-      angle_6 = sliderValue6.toInt();
+      servoAngles[5] = sliderValue6.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (message.indexOf("7s") >= 0) {
       sliderValue7 = message.substring(2);
-      angle_7 = sliderValue7.toInt();
+      servoAngles[6] = sliderValue7.toInt();
       Serial.println(getSliderValues());
       notifyClients(getSliderValues());
     }
     if (strcmp((char *)data, "getValues") == 0) {
       notifyClients(getSliderValues());
+      loadServoParam();
       notifyClients(servosArmed ? "armed&true" : "armed&false");
     }
 
@@ -274,33 +274,20 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         servosArmed = true;
         notifyClients(servosArmed ? "armed&true" : "armed&true");
         client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
-        initServo();
+        initServos();
       } else {
         servosArmed = false;
         notifyClients(servosArmed ? "armed&true" : "armed&false");
         client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
-        Servo1.detach();  //GPIO16 = D0
-        Servo2.detach();  //GPIO14 = D5
-        Servo3.detach();  //GPIO12 = D6
-        Servo4.detach();  //GPIO5 = D1
-        Servo5.detach();  //GPIO4 = D2
-        Servo6.detach();  //GPIO0 = D3
-        Servo7.detach();  //GPIO2 = D4
+        detachServos();
       }
     }
 
-    // if (strcmp((char *)data, "Disarm") == 0) {
-    //   servosArmed = false;
-    //   notifyClients(servosArmed ? "armed&true" : "armed&false");
-    //   client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
-    //   Servo1.detach();  //GPIO16 = D0
-    //   Servo2.detach();  //GPIO14 = D5
-    //   Servo3.detach();  //GPIO12 = D6
-    //   Servo4.detach();  //GPIO5 = D1
-    //   Servo5.detach();  //GPIO4 = D2
-    //   Servo6.detach();  //GPIO0 = D3
-    //   Servo7.detach();  //GPIO2 = D4
-    // }
+    if (message.indexOf("animation&") >= 0) {
+      message.substring(6).toInt(){
+        // servosArmed = true;
+      }
+    }
 
     if (strcmp((char *)data, "animation") == 0) {
       startAnimation = true;
@@ -341,56 +328,45 @@ void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1,
   }
 }
 
-void initServo() {
-  Servo1.attach(16, 500, 2400);  //GPIO16 = D0
-  Servo2.attach(14, 500, 2400);  //GPIO14 = D5
-  Servo3.attach(12, 500, 2400);  //GPIO12 = D6
-  Servo4.attach(5, 500, 2400);   //GPIO5 = D1
-  Servo5.attach(4, 500, 2400);   //GPIO4 = D2
-  Servo6.attach(0, 500, 2400);   //GPIO0 = D3
-  Servo7.attach(2, 500, 2400);   //GPIO2 = D4
-  Servo1.write(angle_1);
-  Servo2.write(angle_2);
-  Servo3.write(angle_3);
-  Servo4.write(angle_4);
-  Servo5.write(angle_5);
-  Servo6.write(angle_6);
-  Servo7.write(angle_7);
+void initServos() {
+  for (int i = 0; i < numServos; i++) {
+    servos[i].attach(servoPins[i], 500, 2400);
+    servos[i].write(servoAngles[i]);
+  }
 }
-
 void eyeAnimation() {
   if (startAnimation) {
     switch (stepFlag) {
       case 0:
         if (currentMillis - previousStepMillis > 500) {
-          angle_1 = 60;
-          angle_2 = 105;
-          angle_3 = 50;
-          angle_4 = 120;
+          servoAngles[0] = 60;
+          servoAngles[1] = 105;
+          servoAngles[2] = 50;
+          servoAngles[3] = 120;
           stepFlag = 1;
           previousStepMillis = currentMillis;
         }
         break;
       case 1:
         if (currentMillis - previousStepMillis > 100) {
-          angle_2 = 60;
-          angle_4 = 170;
+          servoAngles[1] = 60;
+          servoAngles[3] = 170;
           stepFlag = 2;
           previousStepMillis = currentMillis;
         }
         break;
       case 2:
         if (currentMillis - previousStepMillis > 400) {
-          angle_2 = 105;
-          angle_4 = 120;
+          servoAngles[1] = 105;
+          servoAngles[3] = 120;
           stepFlag = 3;
           previousStepMillis = currentMillis;
         }
         break;
       case 3:
         if (currentMillis - previousStepMillis > 500) {
-          angle_1 = 150;
-          angle_3 = 140;
+          servoAngles[0] = 150;
+          servoAngles[2] = 140;
           stepFlag = 0;
           previousStepMillis = currentMillis;
           startAnimation = false;
@@ -483,7 +459,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue1 = newPayload;
     notifyClients(getSliderValues());
-    angle_1 = intPayload;
+    servoAngles[0] = intPayload;
   }
 
 
@@ -492,7 +468,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue2 = newPayload;
     notifyClients(getSliderValues());
-    angle_2 = intPayload;
+    servoAngles[1] = intPayload;
   }
 
 
@@ -501,7 +477,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue3 = newPayload;
     notifyClients(getSliderValues());
-    angle_3 = intPayload;
+    servoAngles[2] = intPayload;
   }
 
 
@@ -510,7 +486,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue4 = newPayload;
     notifyClients(getSliderValues());
-    angle_4 = intPayload;
+    servoAngles[3] = intPayload;
   }
 
 
@@ -519,7 +495,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue5 = newPayload;
     notifyClients(getSliderValues());
-    angle_5 = intPayload;
+    servoAngles[4] = intPayload;
   }
 
 
@@ -528,7 +504,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue6 = newPayload;
     notifyClients(getSliderValues());
-    angle_6 = intPayload;
+    servoAngles[5] = intPayload;
   }
 
 
@@ -537,7 +513,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     client.publish(USER_MQTT_CLIENT_NAME "/status", cPos);
     sliderValue7 = newPayload;
     notifyClients(getSliderValues());
-    angle_7 = intPayload;
+    servoAngles[6] = intPayload;
   }
 
 
@@ -551,29 +527,45 @@ void callback(char *topic, byte *payload, unsigned int length) {
   }
 
   if (newTopic == USER_MQTT_CLIENT_NAME "/Arm") {
-    if (newPayload == "true"){
-    servosArmed = true;
-    notifyClients(servosArmed ? "armed&true" : "armed&false");
-    client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
-    initServo();
-    }
-    else if (newPayload == "false"){
-          servosArmed = false;
-    notifyClients(servosArmed ? "armed&true" : "armed&false");
-    client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
-    Servo1.detach();  //GPIO16 = D0
-    Servo2.detach();  //GPIO14 = D5
-    Servo3.detach();  //GPIO12 = D6
-    Servo4.detach();  //GPIO5 = D1
-    Servo5.detach();  //GPIO4 = D2
-    Servo6.detach();  //GPIO0 = D3
-    Servo7.detach();  //GPIO2 = D4
+    if (newPayload == "true") {
+      servosArmed = true;
+      notifyClients(servosArmed ? "armed&true" : "armed&false");
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
+      initServos();
+    } else if (newPayload == "false") {
+      servosArmed = false;
+      notifyClients(servosArmed ? "armed&true" : "armed&false");
+      client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
+      detachServos();
     }
   }
 }
+
+void detachServos() {
+  for (int i = 0; i < numServos; i++) {
+    servos[i].detach();
+  }
+}
+
 
 void restartESP() {
   Serial.println("Restarting ESP");
   client.publish(USER_MQTT_CLIENT_NAME "/status", "Restarting..");
   ESP.restart();
+}
+
+void loadServoParam() {
+  if (loadFile(LittleFS, SERVO_CONFIG_FILE)) {
+    uint8_t i = 0;
+    for (JsonPair servoParameter_item : config["servoParameter"].as<JsonObject>()) {
+      const char *servoParameter_item_key = servoParameter_item.key().c_str();  // "Servo1", "Servo2", ...
+
+      Servo_K1[i] = servoParameter_item.value()["K1"];  // 0.95, 0.95, 0.95, 0.95, 0.95, 0.95, 0.95
+      Servo_K2[i] = servoParameter_item.value()["K2"];  // 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05
+      i += 1;
+    }
+     char Nachricht[512];
+    serializeJson(config, Nachricht, sizeof(Nachricht));
+    notifyClients(Nachricht);
+  }
 }

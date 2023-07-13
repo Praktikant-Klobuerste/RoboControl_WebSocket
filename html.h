@@ -18,10 +18,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       <ul class="navbar-nav mx-4 topnav">
          <!-- Settings Modal button -->
          <li class="nav-item">
-            <button id="btnSettings" class="btn btn-outline-light" data-bs-toggle="modal"
-               data-bs-target="#modalSettings">
-               Settings
-            </button>
+            <a class="btn btn-outline-light"  id="btnSettings" href="settings" role="button">Settings</a>
          </li>
          <li class="nav-item">
             <button id="btnPower" class="btn btn-warning" onclick="togglePower(this)">
@@ -90,69 +87,6 @@ const char index_html[] PROGMEM = R"rawliteral(
       </div>
    </section>
 
-   <!-- Modal Settings -->
-   <section class="modal fade" id="modalSettings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-      aria-labelledby="modalSettingsLabel" aria-hidden="true">
-      <div class="modal-dialog modal-fullscreen">
-         <div class="modal-content text-bg-dark">
-            <div class="modal-header">
-               <h1 class="modal-title fs-5 text-bg-dark" id="modalSettingsLabel">
-                  Settings
-               </h1>
-               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="modalSettingsBody">
-               <!-- Form -->
-               <form name="servoParameter" class="mx-5">
-                  <div class="servo-input-container">
-                     <label for="inputServo1K1" class="form-label">Servo 1</label>
-
-                     <input type="number" class="form-control" id="inputServo1K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo1K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo2K1" class="form-label">Servo 2</label>
-
-                     <input type="number" class="form-control" id="inputServo2K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo2K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo3K1" class="form-label">Servo 3</label>
-
-                     <input type="number" class="form-control" id="inputServo3K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo3K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo4K1" class="form-label">Servo 4</label>
-
-                     <input type="number" class="form-control" id="inputServo4K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo4K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo5K1" class="form-label">Servo 5</label>
-
-                     <input type="number" class="form-control" id="inputServo5K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo5K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo6K1" class="form-label">Servo 6</label>
-
-                     <input type="number" class="form-control" id="inputServo6K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo6K2" value="0.90">
-                  </div>
-                  <div class="servo-input-container">
-                     <label for="inputServo7K1" class="form-label">Servo 7</label>
-
-                     <input type="number" class="form-control" id="inputServo7K1" value="0.10">
-                     <input type="number" class="form-control" id="inputServo7K2" value="0.90">
-                  </div>
-
-               </form>
-               <button type="submit" class="btn btn-primary" onclick="validateForm()">Submit</button>
-            </div>
-         </div>
-      </div>
-   </section>
 
    <section class="content">
       <div class="card-grid">
