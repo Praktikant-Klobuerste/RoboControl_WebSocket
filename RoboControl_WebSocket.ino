@@ -1,5 +1,4 @@
 #include <ArduinoJson.h>
-#include "filesystem.h"
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -8,18 +7,21 @@
 #include <AsyncElegantOTA.h>
 #include <PubSubClient.h>
 #include <Servo.h>
+
+#include "filesystem.h"
 #include "html.h"
 #include "settings_html.h"
 #include "css.h"
 #include "script.h"
+#include "secrets.h"
 
 
 // Replace with your network credentials
-const char *ssid = "Super-Haching";
-const char *password = "27101966";
-const char *mqtt_server = "192.168.2.230";
-const char *mqtt_username = "Ravson";
-const char *mqtt_password = "Hunzapfen1";
+const char *ssid = SECRET_SSID;
+const char *password = SECRET_PASS;
+const char *mqtt_server = MQTT_SERVER;
+const char *mqtt_username = MQTT_USERNAME;
+const char *mqtt_password = MQTT_PASSWORD;
 
 #define clientID_Name "Robo"
 #define USER_MQTT_CLIENT_NAME "Robo"
@@ -61,7 +63,7 @@ unsigned long currentMillis;
 long previousMillis = 0;  // set up timers
 int stepFlag = 0;
 long previousStepMillis = 0;
-bool startAnimation = false;
+uint8_t animationNumber = 0;
 bool servosArmed = true;
 
 
@@ -74,7 +76,10 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 void initWebSocket();
 void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1, float k2);
 void initServos();
+void animations();
 void eyeAnimation();
+void headAnimation();
+void confuseAnimation();
 void callback(char *topic, byte *payload, unsigned int length);
 void reconnect();
 void restartESP();
@@ -149,8 +154,10 @@ void loop() {
       smoothServo(servoAngles[i], &prevAngles[i], servos[i], Servo_K1[i], Servo_K2[i]);
     }
 
-    eyeAnimation();
+    animations();
   }
+
+
 
   if (round(prevAngles[0]) != servoAngles[0]) {
     Serial.print(servoAngles[0]);
@@ -271,28 +278,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
     if (message.indexOf("armed&") >= 0) {
       if (message.substring(6) == "true") {
-        servosArmed = true;
-        notifyClients(servosArmed ? "armed&true" : "armed&true");
-        client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
         initServos();
       } else {
-        servosArmed = false;
-        notifyClients(servosArmed ? "armed&true" : "armed&false");
-        client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
         detachServos();
       }
     }
 
     if (message.indexOf("animation&") >= 0) {
-      message.substring(6).toInt(){
-        // servosArmed = true;
-      }
+      animationNumber = message.substring(10).toInt();
+      Serial.print("animationNumber: ");
+      Serial.println(animationNumber);
     }
 
-    if (strcmp((char *)data, "animation") == 0) {
-      startAnimation = true;
-      client.publish(USER_MQTT_CLIENT_NAME "/status", "Starting Animation");
-    }
+    // if (strcmp((char *)data, "animation") == 0) {
+    //   animationNumber = 1;
+    //   client.publish(USER_MQTT_CLIENT_NAME "/status", "Starting Animation");
+    // }
   }
 }
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
@@ -333,46 +334,155 @@ void initServos() {
     servos[i].attach(servoPins[i], 500, 2400);
     servos[i].write(servoAngles[i]);
   }
+  servosArmed = true;
+  notifyClients(servosArmed ? "armed&true" : "armed&true");
+  client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
 }
+
+void animations() {
+  switch (animationNumber) {
+    case 0:
+      break;
+    case 1:
+      eyeAnimation();
+      break;
+    case 2:
+      headAnimation();
+      break;
+    case 3:
+      confuseAnimation();
+      break;
+  }
+}
+
+
 void eyeAnimation() {
-  if (startAnimation) {
-    switch (stepFlag) {
-      case 0:
-        if (currentMillis - previousStepMillis > 500) {
-          servoAngles[0] = 60;
-          servoAngles[1] = 105;
-          servoAngles[2] = 50;
-          servoAngles[3] = 120;
-          stepFlag = 1;
-          previousStepMillis = currentMillis;
-        }
-        break;
-      case 1:
-        if (currentMillis - previousStepMillis > 100) {
-          servoAngles[1] = 60;
-          servoAngles[3] = 170;
-          stepFlag = 2;
-          previousStepMillis = currentMillis;
-        }
-        break;
-      case 2:
-        if (currentMillis - previousStepMillis > 400) {
-          servoAngles[1] = 105;
-          servoAngles[3] = 120;
-          stepFlag = 3;
-          previousStepMillis = currentMillis;
-        }
-        break;
-      case 3:
-        if (currentMillis - previousStepMillis > 500) {
-          servoAngles[0] = 150;
-          servoAngles[2] = 140;
-          stepFlag = 0;
-          previousStepMillis = currentMillis;
-          startAnimation = false;
-        }
-        break;
-    }
+  switch (stepFlag) {
+    case 0:
+      if (currentMillis - previousStepMillis > 500) {
+        servoAngles[0] = 60;
+        servoAngles[1] = 105;
+        servoAngles[2] = 50;
+        servoAngles[3] = 120;
+        stepFlag = 1;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 1:
+      if (currentMillis - previousStepMillis > 100) {
+        servoAngles[1] = 60;
+        servoAngles[3] = 170;
+        stepFlag = 2;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 2:
+      if (currentMillis - previousStepMillis > 400) {
+        servoAngles[1] = 105;
+        servoAngles[3] = 120;
+        stepFlag = 3;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 3:
+      if (currentMillis - previousStepMillis > 500) {
+        servoAngles[0] = 150;
+        servoAngles[2] = 140;
+        stepFlag = 0;
+        previousStepMillis = currentMillis;
+        animationNumber = 0;
+      }
+      break;
+  }
+}
+
+void headAnimation() {
+  switch (stepFlag) {
+    case 0:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[4] = 90;
+        servoAngles[5] = 80;
+        servoAngles[6] = 90;
+        stepFlag = 1;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 1:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[4] = 100;
+        servoAngles[5] = 15;
+        servoAngles[6] = 30;
+        stepFlag = 2;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 2:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[4] = 140;
+        servoAngles[5] = 70;
+        servoAngles[6] = 180;
+        stepFlag = 3;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 3:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[4] = 90;
+        servoAngles[5] = 80;
+        servoAngles[6] = 90;
+        stepFlag = 0;
+        previousStepMillis = currentMillis;
+        animationNumber = 0;
+      }
+      break;
+  }
+}
+
+void confuseAnimation() {
+  switch (stepFlag) {
+    case 0:
+      if (currentMillis - previousStepMillis > 200) {
+        servoAngles[4] = 90;
+        servoAngles[5] = 80;
+        servoAngles[6] = 90;
+        stepFlag = 1;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 1:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[0] = 60;
+        servoAngles[1] = 80;
+        servoAngles[2] = 140;
+        servoAngles[3] = 140;
+        servoAngles[4] = 150;
+        servoAngles[5] = 10;
+        stepFlag = 2;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 2:
+      if (currentMillis - previousStepMillis > 2000) {
+        servoAngles[0] = 150;
+        servoAngles[1] = 105;
+        servoAngles[2] = 50;
+        servoAngles[3] = 120;
+        servoAngles[4] = 20;
+        servoAngles[5] = 160;
+        stepFlag = 3;
+        previousStepMillis = currentMillis;
+      }
+      break;
+    case 3:
+      if (currentMillis - previousStepMillis > 1000) {
+        servoAngles[4] = 80;
+        servoAngles[5] = 80;
+        servoAngles[6] = 70;
+        stepFlag = 0;
+        previousStepMillis = currentMillis;
+        animationNumber = 0;
+      }
+      break;
   }
 }
 
@@ -445,7 +555,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
   //++++++++++++++++++  ++++Incoming Statements++++++++++++++++++++++
   if (newTopic == USER_MQTT_CLIENT_NAME "/Movement") {
     if (newPayload == "Start") {
-      startAnimation = true;
+      animationNumber = 1;
       client.publish(USER_MQTT_CLIENT_NAME "/status", "Starting Animation");
     }
     if (newPayload == "OFF") {
@@ -528,14 +638,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
   if (newTopic == USER_MQTT_CLIENT_NAME "/Arm") {
     if (newPayload == "true") {
-      servosArmed = true;
-      notifyClients(servosArmed ? "armed&true" : "armed&false");
-      client.publish(USER_MQTT_CLIENT_NAME "/status", "Arming Servos..");
       initServos();
     } else if (newPayload == "false") {
-      servosArmed = false;
-      notifyClients(servosArmed ? "armed&true" : "armed&false");
-      client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
       detachServos();
     }
   }
@@ -545,6 +649,9 @@ void detachServos() {
   for (int i = 0; i < numServos; i++) {
     servos[i].detach();
   }
+  servosArmed = false;
+  notifyClients(servosArmed ? "armed&true" : "armed&false");
+  client.publish(USER_MQTT_CLIENT_NAME "/status", "Disarming Servos..");
 }
 
 
@@ -564,7 +671,7 @@ void loadServoParam() {
       Servo_K2[i] = servoParameter_item.value()["K2"];  // 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05
       i += 1;
     }
-     char Nachricht[512];
+    char Nachricht[512];
     serializeJson(config, Nachricht, sizeof(Nachricht));
     notifyClients(Nachricht);
   }

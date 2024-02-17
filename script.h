@@ -152,8 +152,9 @@ function togglePower(element) {
 }
 
 function startAnimation(element) {
-  console.log(element.id);
-  websocket.send("animation");
+  var btnAnimationNr = element.id.charAt(element.id.length - 1);
+  console.log("animation&"+ btnAnimationNr);
+  websocket.send("animation&"+ btnAnimationNr);
 }
 
 function validateForm() {
@@ -195,7 +196,7 @@ function validateForm() {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/json?value=" + jsonData, true);
   xhr.send();
-  //  window.location.href = '/';
+   window.location.href = '/';
 }
 
 function updateSliderPWM_6(element) {

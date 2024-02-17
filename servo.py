@@ -12,7 +12,7 @@ password = "Hunzapfen1"
 mqttc = mqtt.Client("Python Client")
 
 mqttc.username_pw_set(username, password)
-mqttc.connect(host="192.168.2.230", port=1883)
+mqttc.connect(host="192.168.178.11", port=1883)
 
 
 class Servo():

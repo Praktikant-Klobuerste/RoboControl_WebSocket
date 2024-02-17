@@ -6,7 +6,7 @@ const char index_html[] PROGMEM = R"rawliteral(
    <title>Robo - Control</title>
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
       integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous" />
-      <meta charset="UTF-8">
+   <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1" />
    <!-- <link rel="icon" type="image/png" href="favicon.png"> -->
    <link rel="stylesheet" href="styles.css">
@@ -18,7 +18,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       <ul class="navbar-nav mx-4 topnav">
          <!-- Settings Modal button -->
          <li class="nav-item">
-            <a class="btn btn-outline-light"  id="btnSettings" href="settings" role="button">Settings</a>
+            <a class="btn btn-outline-light" id="btnSettings" href="settings" role="button">Settings</a>
          </li>
          <li class="nav-item">
             <button id="btnPower" class="btn btn-warning" onclick="togglePower(this)">
@@ -41,8 +41,8 @@ const char index_html[] PROGMEM = R"rawliteral(
    </nav>
 
    <!-- offcanvas -->
-   <div class="offcanvas offcanvas-start text-bg-dark" data-bs-scroll="true" tabindex="-1" id="offcanvasWithBothOptions"
-      aria-labelledby="offcanvasWithBothOptionsLabel">
+   <section class="offcanvas offcanvas-start text-bg-dark" data-bs-scroll="true" tabindex="-1"
+      id="offcanvasWithBothOptions" aria-labelledby="offcanvasWithBothOptionsLabel">
       <div class="offcanvas-header">
          <h3 class="offcanvas-title" id="offcanvasWithBothOptionsLabel">
             Animationen
@@ -51,12 +51,23 @@ const char index_html[] PROGMEM = R"rawliteral(
             aria-label="Close"></button>
       </div>
       <div class="offcanvas-body">
-         <button id="btnAnimation" class="btn btn-secondary btn-lg" onclick="startAnimation(this)"
-            data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Start Animation">
-            Eye
-         </button>
+         <div>
+
+            <button id="btnAnimation1" class="btn btn-secondary btn-lg btn-animation" onclick="startAnimation(this)"
+               data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Start Animation">
+               Eye
+            </button>
+            <button id="btnAnimation2" class="btn btn-secondary btn-lg btn-animation" onclick="startAnimation(this)"
+               data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Start Animation">
+               Head
+            </button>
+            <button id="btnAnimation3" class="btn btn-secondary btn-lg btn-animation" onclick="startAnimation(this)"
+               data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Start Animation">
+               Confuse
+            </button>
+         </div>
       </div>
-   </div>
+   </section>
 
 
    <!-- Modal Reset Robot-->
