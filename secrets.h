@@ -6,3 +6,10 @@
 
 #define MQTT_USERNAME "Ravson"
 #define MQTT_PASSWORD "Hunzapfen1"
+
+
+const char *ssid = SECRET_SSID;
+const char *password = SECRET_PASS;
+const char *mqtt_server = MQTT_SERVER;
+const char *mqtt_username = MQTT_USERNAME;
+const char *mqtt_password = MQTT_PASSWORD;
