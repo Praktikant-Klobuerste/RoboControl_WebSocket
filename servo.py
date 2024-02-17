@@ -4,7 +4,7 @@ import random
 import time
 
 username= "Ravson"
-password = "Hunzapfen1"
+password = "pass"
 
 
 
