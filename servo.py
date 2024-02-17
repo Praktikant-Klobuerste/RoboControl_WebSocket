@@ -3,7 +3,7 @@ from tkinter import *
 import random
 import time
 
-username= "Ravson"
+username= "username"
 password = "pass"
 
 
