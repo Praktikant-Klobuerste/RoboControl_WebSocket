@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# script_h
+# script.h
 
 ```c
 const char* script_js = R"=====(
