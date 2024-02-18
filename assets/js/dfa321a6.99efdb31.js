@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkrobo_control_web_socket=self.webpackChunkrobo_control_web_socket||[]).push([[8419],{8904:o=>{o.exports=JSON.parse('{"label":"docusaurus","permalink":"/RoboControl_WebSocket/blog/tags/docusaurus","allTagsPath":"/RoboControl_WebSocket/blog/tags","count":4,"unlisted":false}')}}]);

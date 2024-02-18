@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkrobo_control_web_socket=self.webpackChunkrobo_control_web_socket||[]).push([[5810],{9954:o=>{o.exports=JSON.parse('{"label":"hello","permalink":"/RoboControl-WebSocket/blog/tags/hello","allTagsPath":"/RoboControl-WebSocket/blog/tags","count":2,"unlisted":false}')}}]);
