@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkrobo_control_web_socket=self.webpackChunkrobo_control_web_socket||[]).push([[947],{2403:o=>{o.exports=JSON.parse('{"permalink":"/RoboControl-WebSocket/blog/tags/facebook","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}')}}]);
