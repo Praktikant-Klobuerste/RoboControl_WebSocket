@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkrobo_control_web_socket=self.webpackChunkrobo_control_web_socket||[]).push([[9647],{7121:(e,r,o)=>{o.r(r),o.d(r,{default:()=>l});o(6540);var s=o(4164),c=o(1003),t=o(7559),n=o(2831),u=o(781),a=o(4848);function l(e){return(0,a.jsx)(c.e3,{className:(0,s.A)(t.G.wrapper.docsPages),children:(0,a.jsx)(u.A,{children:(0,n.v)(e.route.routes)})})}}}]);
