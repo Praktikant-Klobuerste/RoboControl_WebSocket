@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkrobo_control_web_socket=self.webpackChunkrobo_control_web_socket||[]).push([[921],{2743:o=>{o.exports=JSON.parse('{"title":"C Files","slug":"/category/c-files","permalink":"/RoboControl_WebSocket/docs/category/c-files","navigation":{"next":{"title":"RoboControl.ino","permalink":"/RoboControl_WebSocket/docs/c-files/RoboControl_ino"}}}')}}]);
