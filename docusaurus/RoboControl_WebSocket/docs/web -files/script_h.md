@@ -1,11 +1,16 @@
 ---
-sidebar_position: 1
+sidebar_position: 4
 ---
 
 # script.h
 
 ```c
 const char* script_js = R"=====(
+  //js file
+)=====";
+```
+
+```js
 var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
 var isOn = true;
@@ -122,16 +127,15 @@ function onMessage(event) {
       var servoParameter = myObj.servoParameter;
       var keys = Object.keys(servoParameter);
       for (var i = 0; i < keys.length; i++) {
-         var key = keys[i];
+        var key = keys[i];
         k1 = servoParameter[key]["K1"];
         k2 = servoParameter[key]["K2"];
 
-        document.getElementById("input" + key+"K1").value = k1
-        document.getElementById("input" + key+"K2").value = k2
+        document.getElementById("input" + key + "K1").value = k1;
+        document.getElementById("input" + key + "K2").value = k2;
 
-        console.log(key, k1,k2);
+        console.log(key, k1, k2);
       }
-
     }
   } else {
     handleMessage(event.data);
@@ -160,8 +164,8 @@ function togglePower(element) {
 
 function startAnimation(element) {
   var btnAnimationNr = element.id.charAt(element.id.length - 1);
-  console.log("animation&"+ btnAnimationNr);
-  websocket.send("animation&"+ btnAnimationNr);
+  console.log("animation&" + btnAnimationNr);
+  websocket.send("animation&" + btnAnimationNr);
 }
 
 function validateForm() {
@@ -203,7 +207,7 @@ function validateForm() {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/json?value=" + jsonData, true);
   xhr.send();
-   window.location.href = '/';
+  window.location.href = "/";
 }
 
 function updateSliderPWM_6(element) {
@@ -214,6 +218,4 @@ function updateSliderPWM_6(element) {
   xhr.open("GET", "/servo6?value=" + sliderValue, true);
   xhr.send();
 }
-
-     )=====";
 ```
