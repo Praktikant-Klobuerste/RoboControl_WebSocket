@@ -101,6 +101,8 @@ void detachServos();
 void loadServoParam();
 ```
 
+### void `setup`
+
 ```c title="void setup" showLineNumbers
 void setup() {
   Serial.begin(115200);
@@ -158,6 +160,8 @@ void setup() {
 }
 ```
 
+### void `loop`
+
 ```c title="void loop" showLineNumbers
 void loop() {
 
@@ -193,7 +197,7 @@ void loop() {
 }
 ```
 
-### String getSliderValues
+### String `getSliderValues`
 
 ```c title="String getSliderValues" showLineNumbers
 //Get Slider Values
@@ -215,7 +219,7 @@ String getSliderValues() {
 }
 ```
 
-### void initWiFi
+### void `initWiFi`
 
 ```c title="void initWiFi" showLineNumbers
 // Initialize WiFi
@@ -236,7 +240,7 @@ void initWiFi() {
 }
 ```
 
-### void notifyClients
+### void `notifyClients`
 
 ```c title="void notifyClients" showLineNumbers
 void notifyClients(String values) {
@@ -244,7 +248,7 @@ void notifyClients(String values) {
 }
 ```
 
-### void handleWebSocketMessage
+### void `handleWebSocketMessage`
 
 ```c title="void handleWebSocketMessage" showLineNumbers
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -327,7 +331,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 }
 ```
 
-### void onEvent
+### void `onEvent`
 
 ```c title="void onEvent" showLineNumbers
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
@@ -348,7 +352,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 }
 ```
 
-### void initWebSocket
+### void `initWebSocket`
 
 ```c title="void initWebSocket" showLineNumbers
 void initWebSocket() {
@@ -357,7 +361,7 @@ void initWebSocket() {
 }
 ```
 
-### void smoothServo
+### void `smoothServo`
 
 ```c title="void smoothServo" showLineNumbers
 void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1, float k2) {
@@ -371,7 +375,7 @@ void smoothServo(int target_value, float *prev_value, Servo &theServo, float k1,
 }
 ```
 
-### void initServos
+### void `initServos`
 
 ```c title="void initServos" showLineNumbers
 void initServos() {
@@ -385,7 +389,7 @@ void initServos() {
 }
 ```
 
-### void animations
+### void `animations`
 
 ```c title="void animations" showLineNumbers
 void animations() {
@@ -405,7 +409,7 @@ void animations() {
 }
 ```
 
-### void eyeAnimation
+### void `eyeAnimation`
 
 ```c title="void eyeAnimation" showLineNumbers
 void eyeAnimation() {
@@ -449,7 +453,7 @@ void eyeAnimation() {
 }
 ```
 
-### void headAnimation
+### void `headAnimation`
 
 ```c title="void headAnimation" showLineNumbers
 void headAnimation() {
@@ -495,7 +499,7 @@ void headAnimation() {
 }
 ```
 
-### void confuseAnimation
+### void `confuseAnimation`
 
 ```c title="void confuseAnimation" showLineNumbers
 void confuseAnimation() {
@@ -547,7 +551,7 @@ void confuseAnimation() {
 }
 ```
 
-### void reconnect
+### void `reconnect`
 
 ```c title="void reconnect" showLineNumbers
 void reconnect() {
@@ -596,7 +600,7 @@ void reconnect() {
 }
 ```
 
-### void callback
+### void `callback`
 
 ```c title="void callback" showLineNumbers
 //++++++++++++++++++++++++++Callback++++++++++++++++++++++++++
@@ -710,7 +714,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
 }
 ```
 
-### void detachServos
+### void `detachServos`
 
 ```c title="void detachServos" showLineNumbers
 void detachServos() {
@@ -723,7 +727,7 @@ void detachServos() {
 }
 ```
 
-### void restartESP
+### void `restartESP`
 
 ```c title="restartESP" showLineNumbers
 void restartESP() {
@@ -733,7 +737,7 @@ void restartESP() {
 }
 ```
 
-### void loadServoParam
+### void `loadServoParam`
 
 ```c title="void loadServoParam" showLineNumbers
 void loadServoParam() {
